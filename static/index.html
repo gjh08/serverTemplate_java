@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server Template · 接口测试</title>
+  <style>
+    :root {
+      --bg: #0f1419; --card: #1a2332; --text: #e6edf3; --muted: #8b949e;
+      --accent: #58a6ff; --ok: #3fb950; --err: #f85149; --border: #30363d;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+    h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.5rem; }
+    h2 { font-size: 1.1rem; margin: 1.75rem 0 0.65rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); color: var(--accent); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.15rem; margin-bottom: 1rem; }
+    code, pre { font-family: Consolas, monospace; font-size: 0.85rem; }
+    code { background: #21262d; padding: 0.12rem 0.35rem; border-radius: 4px; color: #f0883e; }
+    pre { background: #161b22; border: 1px solid var(--border); border-radius: 6px; padding: 0.85rem; overflow-x: auto; margin: 0.5rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; }
+    .badge { display: inline-block; background: #238636; color: #fff; font-size: 0.72rem; padding: 0.12rem 0.45rem; border-radius: 999px; margin-left: 0.4rem; vertical-align: middle; }
+
+    .cfg { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; margin-bottom: 1rem; }
+    .cfg label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.78rem; color: var(--muted); }
+    .cfg input { width: 88px; background: #0d1117; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 0.35rem 0.5rem; }
+    .btn {
+      appearance: none; border: 1px solid #388bfd; background: #1f6feb; color: #fff;
+      padding: 0.35rem 0.85rem; border-radius: 6px; font-size: 0.84rem; cursor: pointer; font-family: inherit; text-decoration: none; display: inline-block;
+    }
+    .btn:hover { background: #388bfd; }
+    .btn.secondary { background: #21262d; border-color: var(--border); color: var(--text); }
+    .btn.secondary:hover { border-color: var(--accent); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn.ok { border-color: #238636; background: #238636; }
+
+    .lab-grid { display: grid; gap: 0.85rem; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 700px) { .lab-grid { grid-template-columns: 1fr; } }
+    .lab-item { border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem 0.9rem; background: #161b22; }
+    .lab-item.full { grid-column: 1 / -1; }
+    .lab-item h3 { margin: 0 0 0.25rem; font-size: 0.92rem; }
+    .lab-meta { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.5rem; }
+    .lab-row { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; margin-bottom: 0.45rem; }
+    .lab-row input[type="text"] {
+      flex: 1; min-width: 120px; background: #0d1117; border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px; padding: 0.35rem 0.55rem; font-size: 0.84rem;
+    }
+
+    .result {
+      margin-top: 0.45rem; padding: 0.6rem 0.7rem; border-radius: 6px;
+      font-family: Consolas, monospace; font-size: 0.76rem; white-space: pre-wrap; word-break: break-all;
+      max-height: 200px; overflow: auto; border: 1px solid var(--border); background: #0d1117; color: var(--muted);
+    }
+    .result.ok { border-color: #238636; color: #7ee787; }
+    .result.err { border-color: var(--err); color: #ff7b72; }
+    .result.pending { border-color: var(--accent); color: var(--accent); }
+
+    /* 拖拽上传区 */
+    .dropzone {
+      border: 2px dashed #388bfd; border-radius: 10px; padding: 2rem 1rem; text-align: center;
+      background: #0d1117; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .dropzone.dragover { border-color: var(--ok); background: #122117; }
+    .dropzone p { margin: 0.35rem 0; color: var(--muted); font-size: 0.88rem; }
+    .dropzone strong { color: var(--accent); }
+    .dropzone .picked { color: var(--ok); font-size: 0.85rem; margin-top: 0.5rem; }
+
+    .file-table { width: 100%; margin-top: 0.75rem; font-size: 0.84rem; }
+    .file-table td:last-child { white-space: nowrap; }
+    .file-table .empty { color: var(--muted); text-align: center; padding: 1rem; }
+    .dl-link { color: var(--accent); font-weight: 500; }
+    .footer { margin-top: 2rem; color: var(--muted); font-size: 0.82rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Server Template <span class="badge">接口测试台</span></h1>
+    <p class="subtitle">HTTP / 文件上传下载 / WebSocket 可在本页直接测；TCP 见下方调用说明</p>
+
+    <h2>连接配置</h2>
+    <div class="card">
+      <div class="cfg">
+        <label>HTTP 端口<input type="number" id="cfgHttp" value="17080" min="1" max="65535"></label>
+        <label>WS 端口<input type="number" id="cfgWs" value="17081" min="1" max="65535"></label>
+        <label>TCP 端口<input type="number" id="cfgTcp" value="17082" min="1" max="65535"></label>
+        <button type="button" class="btn secondary" id="btnSaveCfg">应用</button>
+        <button type="button" class="btn" id="btnRunAll">一键测试 HTTP + WS</button>
+      </div>
+      <p style="margin:0;font-size:0.82rem;color:var(--muted)">
+        HTTP 基址：<code id="showHttp">-</code> · WS：<code id="showWs">-</code> · TCP：<code id="showTcp">-</code>
+      </p>
+    </div>
+
+    <h2>HTTP 接口测试</h2>
+    <div class="card">
+      <div class="lab-grid">
+        <div class="lab-item">
+          <h3>GET /template/health</h3>
+          <p class="lab-meta">健康检查 · 期望 <code>code:0</code></p>
+          <button type="button" class="btn" data-api="health">测试</button>
+          <div class="result" id="res-health">等待测试</div>
+        </div>
+        <div class="lab-item">
+          <h3>GET /template/echo</h3>
+          <p class="lab-meta">HTTP 回声 · 期望 <code>data.echo=pong</code></p>
+          <button type="button" class="btn" data-api="echo">测试</button>
+          <div class="result" id="res-echo">等待测试</div>
+        </div>
+        <div class="lab-item">
+          <h3>GET /template/files/list</h3>
+          <p class="lab-meta">列出 static/uploads</p>
+          <button type="button" class="btn" data-api="list">刷新列表</button>
+          <div class="result" id="res-list">等待测试</div>
+        </div>
+      </div>
+    </div>
+
+    <h2>文件上传 / 下载（真实文件）</h2>
+    <div class="card">
+      <div class="lab-item full" style="border:none;padding:0;background:transparent">
+        <h3 style="margin-bottom:0.5rem">POST /template/files/upload</h3>
+        <div class="dropzone" id="dropzone">
+          <strong>拖拽文件到此处</strong>
+          <p>或点击选择文件 · multipart 字段名 <code>file</code></p>
+          <p class="picked" id="pickedFile"></p>
+          <input type="file" id="fileInput" hidden multiple>
+        </div>
+        <div class="lab-row" style="margin-top:0.75rem">
+          <button type="button" class="btn" id="btnUpload" disabled>开始上传</button>
+          <span id="uploadProgress" style="font-size:0.82rem;color:var(--muted)"></span>
+        </div>
+        <div class="result" id="res-upload">选择或拖入文件后点击「开始上传」</div>
+
+        <h3 style="margin:1.25rem 0 0.5rem">GET /template/files/download/{name}</h3>
+        <p class="lab-meta">点击下方「保存到本地」会触发浏览器真实下载；也可输入文件名后下载</p>
+        <div class="lab-row">
+          <input type="text" id="downloadName" placeholder="文件名">
+          <button type="button" class="btn" data-api="download">下载此文件</button>
+        </div>
+        <div class="result" id="res-download">从下方列表点击「保存到本地」</div>
+
+        <table class="file-table" id="fileTable">
+          <thead><tr><th>文件名</th><th>大小</th><th>操作</th></tr></thead>
+          <tbody id="fileTableBody"><tr><td colspan="3" class="empty">加载中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <h2>WebSocket 测试（须有回复 cmd=9002）</h2>
+    <div class="card">
+      <div class="lab-item full" style="border:none;padding:0;background:transparent">
+        <p class="lab-meta">连接 <code id="wsPath">ws://127.0.0.1:17081/websocket</code> · 发送 Binary cmd=9001 · 必须收到 cmd=9002</p>
+        <div class="lab-row">
+          <input type="text" id="wsPayload" value="hello-ws" placeholder="payload 字符串">
+          <button type="button" class="btn" data-api="ws">发送并等待回复</button>
+        </div>
+        <div class="result" id="res-ws">点击按钮测试 WebSocket Echo</div>
+      </div>
+    </div>
+
+    <h2>TCP 调用方式（浏览器无法直连，请用客户端）</h2>
+    <div class="card">
+      <p>TCP 端口 <code id="tcpPortDoc">17082</code>。每帧 = <strong>2 字节小端长度</strong> + 消息体（12 字节头 + JSON）。</p>
+      <pre>消息体布局:
+  cmd   int16 LE  = 9001 (EchoRequest)
+  utag  int64 LE
+  srv   int16 LE  = 0
+  body  JSON      {"seq":1,"payload":"hello"}
+
+响应 cmd = 9002 (EchoResponse)，channel = "tcp"</pre>
+      <p><strong>Python 快速测试（HTTP + TCP + WS 一键）：</strong></p>
+      <pre id="tcpPySnippet">pip install websocket-client
+py -3 tests/test_client.py --host 127.0.0.1 --http 17080 --ws 17081 --tcp 17082</pre>
+      <p style="margin:0;font-size:0.85rem;color:var(--muted)">仅测 TCP：用 <code>socket</code> 连 <code id="tcpHostDoc">127.0.0.1:17082</code>，发送 <code>pack_frame(pack_message(9001, utag, {"seq":1,"payload":"hello-tcp"}))</code>，解析返回帧中 <code>cmd=9002</code>。完整代码见 <code>tests/test_client.py</code> 的 <code>test_tcp()</code>。</p>
+    </div>
+
+    <p class="footer">serverdll framework · static/uploads 为上传目录 · 本页同源调用 API 无跨域问题</p>
+  </div>
+
+  <script>
+  (function () {
+    const ST_CMD_REQ = 9001, ST_CMD_RESP = 9002, HEAD = 12;
+    const CFG_KEY = 'st_port_cfg';
+
+    let pendingFiles = [];
+    let httpBase = '', wsUrl = '', tcpHost = '';
+
+    function loadCfg() {
+      try {
+        const c = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+        if (c.http) document.getElementById('cfgHttp').value = c.http;
+        if (c.ws) document.getElementById('cfgWs').value = c.ws;
+        if (c.tcp) document.getElementById('cfgTcp').value = c.tcp;
+      } catch (_) {}
+      applyCfg();
+    }
+
+    function applyCfg() {
+      const host = location.hostname || '127.0.0.1';
+      const httpPort = document.getElementById('cfgHttp').value || '17080';
+      const wsPort = document.getElementById('cfgWs').value || '17081';
+      const tcpPort = document.getElementById('cfgTcp').value || '17082';
+      httpBase = 'http://' + host + ':' + httpPort;
+      wsUrl = 'ws://' + host + ':' + wsPort + '/websocket';
+      tcpHost = host + ':' + tcpPort;
+      document.getElementById('showHttp').textContent = httpBase;
+      document.getElementById('showWs').textContent = wsUrl;
+      document.getElementById('showTcp').textContent = tcpHost;
+      document.getElementById('wsPath').textContent = wsUrl;
+      document.getElementById('tcpPortDoc').textContent = tcpPort;
+      document.getElementById('tcpHostDoc').textContent = tcpHost;
+      localStorage.setItem(CFG_KEY, JSON.stringify({ http: httpPort, ws: wsPort, tcp: tcpPort }));
+    }
+
+    function showResult(id, text, ok) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'result ' + (ok === undefined ? '' : ok ? 'ok' : 'err');
+    }
+    function showPending(id, t) {
+      const el = document.getElementById(id);
+      el.textContent = t || '请求中…';
+      el.className = 'result pending';
+    }
+    function fmtJson(t) { try { return JSON.stringify(JSON.parse(t), null, 2); } catch (_) { return t; } }
+    function apiOk(jsonText) {
+      try { const j = JSON.parse(jsonText); return j.code === 0; } catch (_) { return false; }
+    }
+
+    async function httpGet(path, resId, validate) {
+      showPending(resId);
+      const t0 = performance.now();
+      try {
+        const r = await fetch(httpBase + path, { cache: 'no-store' });
+        const text = await r.text();
+        const ms = (performance.now() - t0).toFixed(1);
+        let ok = r.ok && (validate ? validate(text) : apiOk(text));
+        if (validate && r.ok && !validate(text)) ok = false;
+        else if (!validate && r.ok && text.startsWith('{')) ok = apiOk(text);
+        showResult(resId, 'HTTP ' + r.status + ' · ' + ms + ' ms\n\n' + fmtJson(text), ok);
+        return { ok, text };
+      } catch (e) {
+        showResult(resId, '失败: ' + e.message + '\n\n请确认服务已启动且 HTTP 端口正确', false);
+        return { ok: false };
+      }
+    }
+
+    function testHealth() {
+      return httpGet('/template/health', 'res-health', function (t) {
+        const j = JSON.parse(t); return j.code === 0 && j.data && j.data.status === 'ok';
+      });
+    }
+    function testEcho() {
+      return httpGet('/template/echo', 'res-echo', function (t) {
+        const j = JSON.parse(t); return j.code === 0 && j.data && j.data.echo === 'pong';
+      });
+    }
+
+    async function testList() {
+      showPending('res-list');
+      const t0 = performance.now();
+      try {
+        const r = await fetch(httpBase + '/template/files/list', { cache: 'no-store' });
+        const text = await r.text();
+        const ms = (performance.now() - t0).toFixed(1);
+        const ok = r.ok && apiOk(text);
+        showResult('res-list', 'HTTP ' + r.status + ' · ' + ms + ' ms\n\n' + fmtJson(text), ok);
+        renderFileTable(text);
+        return { ok };
+      } catch (e) {
+        showResult('res-list', '失败: ' + e.message, false);
+        renderFileTable(null);
+        return { ok: false };
+      }
+    }
+
+    function renderFileTable(jsonText) {
+      const tbody = document.getElementById('fileTableBody');
+      tbody.innerHTML = '';
+      if (!jsonText) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">无法加载</td></tr>';
+        return;
+      }
+      try {
+        const files = (JSON.parse(jsonText).data && JSON.parse(jsonText).data.files) || [];
+        const visible = files.filter(function (f) { return !(f.name === '.gitkeep' && f.size === 0); });
+        if (!visible.length) {
+          tbody.innerHTML = '<tr><td colspan="3" class="empty">uploads 目录暂无文件（请先上传）</td></tr>';
+          return;
+        }
+        visible.forEach(function (f) {
+          const tr = document.createElement('tr');
+          const dlUrl = httpBase + '/template/files/download/' + encodeURIComponent(f.name);
+          tr.innerHTML =
+            '<td>' + escapeHtml(f.name) + '</td>' +
+            '<td>' + f.size + ' B</td>' +
+            '<td>' +
+              '<a class="dl-link btn secondary" href="' + dlUrl + '" download="' + escapeAttr(f.name) + '">保存到本地</a> ' +
+              '<button type="button" class="btn secondary btn-dl-fetch" data-name="' + escapeAttr(f.name) + '">Fetch 下载</button>' +
+            '</td>';
+          tbody.appendChild(tr);
+        });
+        tbody.querySelectorAll('.btn-dl-fetch').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            document.getElementById('downloadName').value = btn.getAttribute('data-name');
+            testDownload(true);
+          });
+        });
+      } catch (_) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">解析列表失败</td></tr>';
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    }
+    function escapeAttr(s) {
+      return String(s).replace(/"/g, '&quot;');
+    }
+
+    function setPendingFiles(files) {
+      pendingFiles = files ? Array.from(files) : [];
+      const btn = document.getElementById('btnUpload');
+      const picked = document.getElementById('pickedFile');
+      if (!pendingFiles.length) {
+        btn.disabled = true;
+        picked.textContent = '';
+        return;
+      }
+      btn.disabled = false;
+      picked.textContent = '已选 ' + pendingFiles.length + ' 个: ' + pendingFiles.map(function (f) { return f.name + ' (' + f.size + ' B)'; }).join(', ');
+    }
+
+    async function uploadOne(file) {
+      const fd = new FormData();
+      fd.append('file', file, file.name);
+      const r = await fetch(httpBase + '/template/files/upload', { method: 'POST', body: fd });
+      const text = await r.text();
+      return { file: file.name, status: r.status, ok: r.ok && apiOk(text), body: text };
+    }
+
+    async function testUpload() {
+      if (!pendingFiles.length) {
+        showResult('res-upload', '请先选择或拖入文件', false);
+        return { ok: false };
+      }
+      showPending('res-upload', '上传中…');
+      document.getElementById('uploadProgress').textContent = '';
+      const t0 = performance.now();
+      const lines = [];
+      let allOk = true;
+      for (let i = 0; i < pendingFiles.length; i++) {
+        const f = pendingFiles[i];
+        document.getElementById('uploadProgress').textContent = '正在上传 ' + (i + 1) + '/' + pendingFiles.length + ': ' + f.name;
+        try {
+          const res = await uploadOne(f);
+          lines.push((res.ok ? '✓' : '✗') + ' ' + f.name + ' → HTTP ' + res.status + '\n' + fmtJson(res.body));
+          if (!res.ok) allOk = false;
+          if (res.ok) {
+            try {
+              const j = JSON.parse(res.body);
+              if (j.data && j.data.name) document.getElementById('downloadName').value = j.data.name;
+            } catch (_) {}
+          }
+        } catch (e) {
+          lines.push('✗ ' + f.name + ' → ' + e.message);
+          allOk = false;
+        }
+      }
+      const ms = (performance.now() - t0).toFixed(1);
+      document.getElementById('uploadProgress').textContent = allOk ? '全部成功' : '部分失败';
+      showResult('res-upload', '耗时 ' + ms + ' ms\n\n' + lines.join('\n\n'), allOk);
+      await testList();
+      return { ok: allOk };
+    }
+
+    async function testDownload(fromTable) {
+      const name = document.getElementById('downloadName').value.trim();
+      if (!name) {
+        showResult('res-download', '请输入文件名', false);
+        return { ok: false };
+      }
+      showPending('res-download', '下载 ' + name + ' …');
+      const url = httpBase + '/template/files/download/' + encodeURIComponent(name);
+      const t0 = performance.now();
+      try {
+        const r = await fetch(url, { cache: 'no-store' });
+        const ms = (performance.now() - t0).toFixed(1);
+        if (!r.ok) {
+          showResult('res-download', 'HTTP ' + r.status + ' · ' + ms + ' ms\n\n' + (await r.text()), false);
+          return { ok: false };
+        }
+        const blob = await r.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = name;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+        }, 200);
+        showResult('res-download',
+          'HTTP ' + r.status + ' · ' + ms + ' ms\n\n已保存: ' + name + '\n大小: ' + blob.size + ' B' +
+          (fromTable ? '' : '\n\n也可直接使用列表中的「保存到本地」链接'), true);
+        return { ok: true };
+      } catch (e) {
+        showResult('res-download', '下载失败: ' + e.message, false);
+        return { ok: false };
+      }
+    }
+
+    function packMessage(cmd, utag, payloadObj) {
+      const body = new TextEncoder().encode(JSON.stringify(payloadObj));
+      const buf = new ArrayBuffer(HEAD + body.length);
+      const v = new DataView(buf);
+      v.setUint16(0, cmd, true);
+      v.setBigUint64(2, BigInt(utag), true);
+      v.setUint16(10, 0, true);
+      new Uint8Array(buf, HEAD).set(body);
+      return new Uint8Array(buf);
+    }
+
+    function parseResponse(u8) {
+      if (u8.length < HEAD) return { error: '帧太短 ' + u8.length + ' B' };
+      const v = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+      const cmd = v.getUint16(0, true);
+      const utag = v.getBigUint64(2, true);
+      const body = u8.slice(HEAD);
+      const echo = cmd === ST_CMD_RESP ? decodeEchoResponse(body) : null;
+      return { cmd: cmd, utag: utag.toString(), bodyLen: body.length, hex: hexPreview(u8, 48), echo: echo };
+    }
+
+    /** EchoResponse 二进制：seq i64 · payload u16+str · channel u16+str · ts i64 */
+    function decodeEchoResponse(body) {
+      let off = 0;
+      function need(n) { if (off + n > body.length) return false; return true; }
+      if (!need(8)) return null;
+      const seq = Number(new DataView(body.buffer, body.byteOffset + off, 8).getBigInt64(0, true));
+      off += 8;
+      if (!need(2)) return null;
+      const plen = body[off] << 8 | body[off + 1]; off += 2;
+      if (!need(plen + 2)) return null;
+      const payload = new TextDecoder().decode(body.slice(off, off + plen)); off += plen;
+      const clen = body[off] << 8 | body[off + 1]; off += 2;
+      if (!need(clen + 8)) return null;
+      const channel = new TextDecoder().decode(body.slice(off, off + clen)); off += clen;
+      const ts = Number(new DataView(body.buffer, body.byteOffset + off, 8).getBigInt64(0, true));
+      return { seq: seq, payload: payload, channel: channel, ts: ts };
+    }
+
+    function hexPreview(u8, max) {
+      const n = Math.min(u8.length, max);
+      let s = '';
+      for (let i = 0; i < n; i++) s += u8[i].toString(16).padStart(2, '0') + ' ';
+      if (u8.length > max) s += '…';
+      return s.trim();
+    }
+
+    function testWs() {
+      const payload = document.getElementById('wsPayload').value || 'hello-ws';
+      showPending('res-ws', '连接 ' + wsUrl + ' …');
+      const t0 = performance.now();
+      return new Promise(function (resolve) {
+        let ws;
+        try { ws = new WebSocket(wsUrl); ws.binaryType = 'arraybuffer'; }
+        catch (e) {
+          showResult('res-ws', '创建 WebSocket 失败: ' + e.message, false);
+          resolve({ ok: false }); return;
+        }
+        let done = false;
+        const finish = function (ok, msg) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          try { ws.close(); } catch (_) {}
+          showResult('res-ws', msg, ok);
+          resolve({ ok: ok });
+        };
+        const timer = setTimeout(function () {
+          finish(false, '超时 15s\n\n未收到 cmd=9002 回复\nWS: ' + wsUrl);
+        }, 15000);
+
+        ws.onerror = function () {
+          finish(false, 'WebSocket 连接失败\n\n' + wsUrl + '\n\n请确认 WS 服务已启动（默认端口 17081）');
+        };
+        ws.onopen = function () {
+          const req = packMessage(ST_CMD_REQ, 2001, { seq: Date.now() % 100000, payload: payload });
+          ws.send(req.buffer);
+          showPending('res-ws', '已发送 cmd=9001，等待 cmd=9002 回复…');
+        };
+        ws.onmessage = function (ev) {
+          const ms = (performance.now() - t0).toFixed(1);
+          if (!(ev.data instanceof ArrayBuffer)) {
+            finish(false, '收到非 Binary 帧（WS 仅支持 Binary）\n' + wsUrl);
+            return;
+          }
+          const u8 = new Uint8Array(ev.data);
+          const parsed = parseResponse(u8);
+          if (parsed.error) {
+            finish(false, ms + ' ms\n\n' + parsed.error);
+            return;
+          }
+          const ok = parsed.cmd === ST_CMD_RESP;
+          const echoLine = parsed.echo
+            ? '\n回显 payload: "' + parsed.echo.payload + '"\nchannel: ' + parsed.echo.channel + ' · seq: ' + parsed.echo.seq
+            : '';
+          finish(ok,
+            (ok ? '✓ 收到 Echo 回复' : '✗ cmd 错误') + ' · ' + ms + ' ms\n\n' +
+            '发送 payload: "' + payload + '"\n' +
+            '响应 cmd: ' + parsed.cmd + (ok ? ' (9002 OK)' : ' (期望 9002)') + '\n' +
+            'utag: ' + parsed.utag + '\n' +
+            'body 长度: ' + parsed.bodyLen + ' B' + echoLine + '\n' +
+            '帧头 hex: ' + parsed.hex + '\n\n' + wsUrl);
+        };
+      });
+    }
+
+    /* 拖拽上传 */
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    dropzone.addEventListener('click', function () { fileInput.click(); });
+    fileInput.addEventListener('change', function () { setPendingFiles(fileInput.files); });
+    ['dragenter','dragover'].forEach(function (ev) {
+      dropzone.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); });
+    });
+    ['dragleave','drop'].forEach(function (ev) {
+      dropzone.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); });
+    });
+    dropzone.addEventListener('drop', function (e) {
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        setPendingFiles(e.dataTransfer.files);
+      }
+    });
+    document.getElementById('btnUpload').addEventListener('click', testUpload);
+
+    document.querySelectorAll('[data-api]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const api = btn.getAttribute('data-api');
+        if (api === 'health') testHealth();
+        else if (api === 'echo') testEcho();
+        else if (api === 'list') testList();
+        else if (api === 'download') testDownload(false);
+        else if (api === 'ws') testWs();
+      });
+    });
+
+    document.getElementById('btnSaveCfg').addEventListener('click', function () {
+      applyCfg();
+      testList();
+    });
+    document.getElementById('btnRunAll').addEventListener('click', async function () {
+      const btn = document.getElementById('btnRunAll');
+      btn.disabled = true;
+      btn.textContent = '测试中…';
+      applyCfg();
+      const rs = [];
+      rs.push(await testHealth());
+      rs.push(await testEcho());
+      rs.push(await testList());
+      rs.push(await testWs());
+      const n = rs.filter(function (r) { return r.ok; }).length;
+      btn.textContent = '一键测试 HTTP + WS（' + n + '/4 通过）';
+      btn.disabled = false;
+    });
+
+    loadCfg();
+    testList();
+  })();
+  </script>
+</body>
+</html>
